@@ -43,7 +43,9 @@ namespace MutiplayerSystem
         public int PlayerID;
 
         public ClientLobby Lobby;
-        GameState currentGameState;
+        public GameState CurrentGameState;
+
+        public List<ServerClient> Clients = new List<ServerClient>();
 
         public bool IsHost;
 
@@ -55,7 +57,7 @@ namespace MutiplayerSystem
 
         void Start()
         {
-            currentGameState = GameState.Lobby;
+            CurrentGameState = GameState.Lobby;
 
             m_Driver = NetworkDriver.Create();
             m_Connection = default(NetworkConnection);
@@ -83,8 +85,7 @@ namespace MutiplayerSystem
             if (!m_Connection.IsCreated)
             {
                 if (!Done)
-                    if (!IsHost)
-                        Lobby.PrintMessage("Can't Connect to Server!", Color.red);
+                    Debug.Log("Can't Connect to Server.");
                 return;
             }
 
@@ -100,7 +101,7 @@ namespace MutiplayerSystem
                 {
                     var messageType = (Message.MessageType)reader.ReadUShort();
 
-                    switch (currentGameState)
+                    switch (CurrentGameState)
                     {
                         case GameState.Lobby:
                             LobbyData.HandleMessages(messageType, reader, m_Connection.InternalId);

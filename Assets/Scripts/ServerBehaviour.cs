@@ -5,11 +5,12 @@ using UnityEngine.Assertions;
 
 using Unity.Collections;
 using Unity.Networking.Transport;
-using UnityEngine.Networking;
-
+using UnityEngine.SceneManagement;
+using System.Linq;
 
 namespace MutiplayerSystem
 {
+
     public enum GameState
     {
         Lobby,
@@ -21,10 +22,10 @@ namespace MutiplayerSystem
     {
         public int ClientID;
         public string ClientName;
+        public Color ClientColour;
+        public ushort HealthPoints;
 
-        public uint ClientColour;
-
-        public ServerClient(int clientID, string clientName, uint clientColour)
+        public ServerClient(int clientID, string clientName, Color clientColour)
         {
             ClientID = clientID;
             ClientName = clientName;
@@ -44,7 +45,7 @@ namespace MutiplayerSystem
                 return instance;
             }
         }
-
+        
         private void Awake()
         {
             // if the singleton hasn't been initialized yet
@@ -61,7 +62,8 @@ namespace MutiplayerSystem
         public NetworkDriver m_Driver;
         public NativeList<NetworkConnection> m_Connections;
 
-        GameState currentGameState;
+        public GameState CurrentGameState;
+        public ushort PlayerStartHealth = 10;
         Message Message = new Message();
 
         public List<ServerClient> Clients = new List<ServerClient>();
@@ -71,12 +73,11 @@ namespace MutiplayerSystem
         public LobbyDataHandler LobbyData = new LobbyDataHandler(false);
         public AliveMessageHandler aliveMessage;
         public GameDataHandler GameData = new GameDataHandler(false);
-
         #endregion
 
         void Start()
         {
-            currentGameState = GameState.Lobby;
+            CurrentGameState = GameState.Lobby;
 
             m_Driver = NetworkDriver.Create();
             var endpoint = NetworkEndPoint.AnyIpv4;
@@ -90,6 +91,7 @@ namespace MutiplayerSystem
                 m_Driver.Listen();
             }
 
+            
             m_Connections = new NativeList<NetworkConnection>(16, Allocator.Persistent);
 
             aliveMessage = new GameObject().AddComponent<AliveMessageHandler>();
@@ -106,6 +108,7 @@ namespace MutiplayerSystem
 
         void Update()
         {
+
             m_Driver.ScheduleUpdate().Complete();
 
             // Clean up connections
@@ -120,23 +123,25 @@ namespace MutiplayerSystem
 
             // Accept new connections
             NetworkConnection c;
-            while ((c = m_Driver.Accept()) != default(NetworkConnection))
+            while ((c = m_Driver.Accept()) != default(NetworkConnection) && Clients.Count < 4)
             {
                 m_Connections.Add(c);
                 Debug.Log("Accepted a connection");
 
                 //Send Welcome Message to Client
-                var colour = (Color32)Color.red;
-                uint colourInt = ((uint)colour.r << 24 | (uint)colour.g << 16 | (uint)colour.b << 8 | (uint)colour.a);
+                var color = Lobby.ColorList[Clients.Count];
+                uint encodedColor = (uint)DataUtilities.EncodeColor(color);
+                //uint colourInt = ((uint)colour.r << 24 | (uint)colour.g << 16 | (uint)colour.b << 8 | (uint)colour.a);
 
-                ServerClient newClient = new ServerClient(c.InternalId, "", colourInt);
+                ServerClient newClient = new ServerClient(c.InternalId, "", color);
+                newClient.HealthPoints = PlayerStartHealth;
 
                 Clients.Add(newClient);
 
                 var message = new WelcomeMessage
                 {
                     PlayerID = c.InternalId,
-                    Colour = colourInt,
+                    Colour = encodedColor,
                 };
 
                 var writer = m_Driver.BeginSend(c);
@@ -159,7 +164,7 @@ namespace MutiplayerSystem
                     {
                         var messageType = (Message.MessageType)reader.ReadUShort();
 
-                        switch (currentGameState)
+                        switch (CurrentGameState)
                         {
                             case GameState.Lobby:
                                 LobbyData.HandleMessages(messageType, reader, i);
@@ -186,7 +191,7 @@ namespace MutiplayerSystem
                         }
 
                         Clients.RemoveAt(i);
-                        Lobby.RemoveFromList(i);
+                        Lobby.LobbyUI.GetComponent<PlayerLobbyList>().RemoveFromList(i);
 
                         m_Connections[i] = default(NetworkConnection);
                     }
@@ -196,12 +201,16 @@ namespace MutiplayerSystem
 
         public void StartGame()
         {
+            CurrentGameState = GameState.InGame;
+            UnityEngine.SceneManagement.SceneManager.LoadScene("GameScene");
+
             for (int i = 0; i < m_Connections.Length; i++)
             {
                 var startGame = new StartGame();
                 var writer = m_Driver.BeginSend(m_Connections[i]);
                 startGame.SerializeObject(ref writer);
                 m_Driver.EndSend(writer);
+
             }
         }
 

@@ -34,7 +34,7 @@ namespace MutiplayerSystem
             Colour = reader.ReadUInt();
             PlayerName = reader.ReadString().ToString();
 
-            Debug.Log(PlayerName);
+            //Debug.Log(PlayerName);
         }
 
     }

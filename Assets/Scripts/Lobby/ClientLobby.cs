@@ -8,10 +8,10 @@ namespace MutiplayerSystem
     public class ClientLobby : MonoBehaviour
     {
         public ClientBehaviour Client;
-
-        GameObject lobbyMenu;
-
         public string PlayerName;
+
+        public GameObject LobbyUI;
+        Text CommandLine;
 
         void Start()
         {
@@ -19,16 +19,17 @@ namespace MutiplayerSystem
             Client.PlayerName = PlayerName;
             Client.Lobby = this;
 
-            lobbyMenu = Instantiate(Resources.Load("ClientLobby") as GameObject);
-            Button b = lobbyMenu.transform.Find("Disconnect").GetComponent<Button>();
+            LobbyUI = Instantiate(Resources.Load("ClientLobby") as GameObject);
+            Button b = LobbyUI.transform.Find("Disconnect").GetComponent<Button>();
             b.onClick.AddListener(delegate () { Client.ClientDisconnect(); });
+
+            CommandLine = LobbyUI.transform.Find("Commandline").GetComponent<Text>();
         }
 
         public void PrintMessage(string _message, Color _color)
         {
-            Text _textObject = lobbyMenu.transform.Find("Commandline").GetComponent<Text>();
-            _textObject.text = _message;
-            _textObject.color = _color;
+            CommandLine.text = _message;
+            CommandLine.color = _color;
         }
     }
 }
