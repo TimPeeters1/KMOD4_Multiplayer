@@ -11,6 +11,7 @@ namespace MutiplayerSystem
         public GameObject LobbyUI;
 
         public Color[] ColorList = { Color.red, Color.green, Color.magenta, Color.blue };
+        public ushort PlayerStartHealth = 10;
 
         // Start is called before the first frame update
         void Start()

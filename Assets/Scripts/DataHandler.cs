@@ -85,7 +85,7 @@ namespace MutiplayerSystem
                         var playerLeft = new PlayerLeft();
                         playerLeft.DeserializeObject(ref reader);
 
-                        ClientBehaviour.Instance.Clients.RemoveAt((int)playerLeft.ID);
+                        ClientBehaviour.Instance.Clients.RemoveAt(playerLeft.PlayerDisconnectID);
 
                         if (!ClientBehaviour.Instance.IsHost)
                             ClientBehaviour.Instance.Lobby.PrintMessage("Player " + playerLeft.PlayerDisconnectID + " has disconnected.", Color.yellow);
@@ -97,6 +97,7 @@ namespace MutiplayerSystem
                         for (int i = 0; i < ClientBehaviour.Instance.Clients.Count; i++)
                         {
                             ClientBehaviour.Instance.Clients[i].HealthPoints = startGame.StartHP;
+                            //Debug.Log(startGame.StartHP);
                         }
 
                         if (!ClientBehaviour.Instance.IsHost)
@@ -188,40 +189,203 @@ namespace MutiplayerSystem
 
         public override void HandleMessages(Message.MessageType messageType, DataStreamReader reader, int ConnectionID)
         {
-            switch (messageType)
+            if (IsClient)
             {
-                case Message.MessageType.PlayerTurn:
-                    break;
-                case Message.MessageType.RoomInfo:
-                    break;
-                case Message.MessageType.PlayerEnterRoom:
-                    break;
-                case Message.MessageType.PlayerLeaveRoom:
-                    break;
-                case Message.MessageType.ObtainTreasure:
-                    break;
-                case Message.MessageType.HitMonster:
-                    break;
-                case Message.MessageType.HitByMonster:
-                    break;
-                case Message.MessageType.PlayerDefends:
-                    break;
-                case Message.MessageType.PlayerLeftDungeon:
-                    break;
-                case Message.MessageType.PlayerDies:
-                    break;
-                case Message.MessageType.EndGame:
-                    break;
-                case Message.MessageType.MoveRequest:
-                    break;
-                case Message.MessageType.AttackRequest:
-                    break;
-                case Message.MessageType.DefendRequest:
-                    break;
-                case Message.MessageType.ClaimTreasureRequest:
-                    break;
-                case Message.MessageType.LeaveDungeonRequest:
-                    break;
+                //Clientside Handling
+                switch (messageType)
+                {
+                    case Message.MessageType.PlayerTurn:
+                        var playerTurn = new PlayerTurn();
+                        playerTurn.DeserializeObject(ref reader);
+                        GameManager.Instance.PlayerTurnUI.text = "Current Turn: " + ClientBehaviour.Instance.Clients[playerTurn.PlayerID].ClientName;
+                        GameManager.Instance.PlayerCurrentTurn = GameManager.Instance.Players[playerTurn.PlayerID];
+
+                        break;
+                    case Message.MessageType.RoomInfo:
+                        var roomInfo = new RoomInfo();
+                        roomInfo.DeserializeObject(ref reader);
+                        GameManager.Instance.RoomGameObject.SetRoomDirections((Room.RoomDirections)roomInfo.MoveDirections);
+
+                        //Disable all players first.
+                        for (int i = 0; i < GameManager.Instance.Players.Count; i++)
+                        {
+                            GameManager.Instance.Players[i].gameObject.SetActive(false);
+                        }
+
+                        //Then enable all players that are currently in this room.
+                        for (int f = 0; f < roomInfo.NumberOfOtherPlayers; f++)
+                        {
+                            GameManager.Instance.Players[roomInfo.OtherPlayerIDs[f]].gameObject.SetActive(true);
+                        }
+                        break;
+                    case Message.MessageType.PlayerEnterRoom:
+                        var playerEnter = new PlayerEnterRoom();
+                        playerEnter.DeserializeObject(ref reader);
+
+                        GameManager.Instance.Players[playerEnter.PlayerID].gameObject.SetActive(true);
+                        break;
+                    case Message.MessageType.PlayerLeaveRoom:
+                        var playerLeave = new PlayerLeaveRoom();
+                        playerLeave.DeserializeObject(ref reader);
+
+                        GameManager.Instance.Players[playerLeave.PlayerID].gameObject.SetActive(false);
+
+                        break;
+                    case Message.MessageType.ObtainTreasure:
+                        break;
+                    case Message.MessageType.HitMonster:
+                        break;
+                    case Message.MessageType.HitByMonster:
+                        break;
+                    case Message.MessageType.PlayerDefends:
+                        break;
+                    case Message.MessageType.PlayerLeftDungeon:
+                        break;
+                    case Message.MessageType.PlayerDies:
+                        break;
+                    case Message.MessageType.EndGame:
+                        break;
+                    case Message.MessageType.MoveRequest:
+                        break;
+                    case Message.MessageType.AttackRequest:
+                        break;
+                    case Message.MessageType.DefendRequest:
+                        break;
+                    case Message.MessageType.ClaimTreasureRequest:
+                        break;
+                    case Message.MessageType.LeaveDungeonRequest:
+                        break;
+                }
+            }
+            else
+            {
+                //Serverside Handling
+                switch (messageType)
+                {
+                    case Message.MessageType.PlayerTurn:
+                        break;
+                    case Message.MessageType.RoomInfo:
+                        break;
+                    case Message.MessageType.PlayerEnterRoom:
+                        break;
+                    case Message.MessageType.PlayerLeaveRoom:
+                        break;
+                    case Message.MessageType.ObtainTreasure:
+                        break;
+                    case Message.MessageType.HitMonster:
+                        break;
+                    case Message.MessageType.HitByMonster:
+                        break;
+                    case Message.MessageType.PlayerDefends:
+                        break;
+                    case Message.MessageType.PlayerLeftDungeon:
+                        break;
+                    case Message.MessageType.PlayerDies:
+                        break;
+                    case Message.MessageType.EndGame:
+                        break;
+                    case Message.MessageType.MoveRequest: //Handle Player Leaving the room.
+                        var moveRequest = new MoveRequest();
+                        moveRequest.DeserializeObject(ref reader);
+
+                        //Remove Player form room.
+                        GameManager.Instance.Players[ConnectionID].CurrentRoom.PlayersInRoom.Remove(GameManager.Instance.Players[ConnectionID]);
+
+                        //Send to other clients in room that player left.
+                        var playerLeave = new PlayerLeaveRoom()
+                        {
+                            PlayerID = ConnectionID
+                        };
+
+                        for (int j = 0; j < GameManager.Instance.Players[ConnectionID].CurrentRoom.PlayersInRoom.Count; j++)
+                        {
+                            var writer = ServerBehaviour.Instance.m_Driver.BeginSend(
+                                ServerBehaviour.Instance.m_Connections[
+                                    GameManager.Instance.Players[ConnectionID].CurrentRoom.PlayersInRoom[j].Client.ClientID
+                                    ]);
+
+                            playerLeave.SerializeObject(ref writer);
+                            ServerBehaviour.Instance.m_Driver.EndSend(writer);
+                        }
+
+                        //Set new room position.
+                        //TODO This is horrible. Fix later :)
+                        Vector2Int newPosition = new Vector2Int(
+                            (int)GameManager.Instance.Players[ConnectionID].CurrentRoom.GridPosition.x +
+                            GameManager.Instance.Players[ConnectionID].CurrentRoom.MoveToNeighbour(moveRequest.MoveDirection).x,
+                            (int)GameManager.Instance.Players[ConnectionID].CurrentRoom.GridPosition.y +
+                            GameManager.Instance.Players[ConnectionID].CurrentRoom.MoveToNeighbour(moveRequest.MoveDirection).y);
+
+                        //Set new room variable.
+                        GameManager.Instance.Players[ConnectionID].CurrentRoom = GameManager.Instance.Grid.RoomGrid[newPosition.x, newPosition.y];
+                        GameManager.Instance.Players[ConnectionID].CurrentRoom.PlayersInRoom.Add(GameManager.Instance.Players[ConnectionID]);
+
+                        //Send to other clients in room that player entered.
+                        var playerJoin = new PlayerEnterRoom()
+                        {
+                            PlayerID = ConnectionID
+                        };
+
+                        //Send to other clients.
+                        for (int e = 0; e < GameManager.Instance.Players[ConnectionID].CurrentRoom.PlayersInRoom.Count; e++)
+                        {
+                            var writer = ServerBehaviour.Instance.m_Driver.BeginSend(
+                                ServerBehaviour.Instance.m_Connections[
+                                    GameManager.Instance.Players[ConnectionID].CurrentRoom.PlayersInRoom[e].Client.ClientID
+                                    ]);
+
+                            playerJoin.SerializeObject(ref writer);
+                            ServerBehaviour.Instance.m_Driver.EndSend(writer);
+                        }
+
+                        //Make new room info.
+                        var roomInfo = new RoomInfo()
+                        {
+                            MoveDirections = (byte)GameManager.Instance.Players[ConnectionID].CurrentRoom.possibleDirections,
+                            TreasureInRoom = (ushort)0,
+                            ContainsMonster = (byte)0,
+                            ContainsExit = (byte)0,
+                            NumberOfOtherPlayers = (byte)GameManager.Instance.Players[ConnectionID].CurrentRoom.PlayersInRoom.Count
+                        };
+
+                        //Search for ID's of players already in room.
+                        int[] newRoomIDs = new int[GameManager.Instance.Players[ConnectionID].CurrentRoom.PlayersInRoom.Count];
+                        for (int i = 0; i < GameManager.Instance.Players[ConnectionID].CurrentRoom.PlayersInRoom.Count; i++)
+                        {
+                            newRoomIDs[i] = GameManager.Instance.Players[ConnectionID].CurrentRoom.PlayersInRoom[i].Client.ClientID;
+                        }
+
+                        //Send Room info to client that is moving room.
+                        var writer1 = ServerBehaviour.Instance.m_Driver.BeginSend(ServerBehaviour.Instance.m_Connections[ConnectionID]);
+                        roomInfo.SerializeObject(ref writer1, newRoomIDs);
+                        ServerBehaviour.Instance.m_Driver.EndSend(writer1);
+
+                        //Set which player's turn it is.
+                        GameManager.Instance.NextTurn();
+
+                        var playerTurn = new PlayerTurn
+                        {
+                            PlayerID = GameManager.Instance.PlayerCurrentTurn.Client.ClientID
+                        };
+
+                        //Send which player's turn it is.
+                        for (int i = 0; i < ServerBehaviour.Instance.Clients.Count; i++)
+                        {
+                            var writer2 = ServerBehaviour.Instance.m_Driver.BeginSend(ServerBehaviour.Instance.m_Connections[i]);
+                            playerTurn.SerializeObject(ref writer2);
+                            ServerBehaviour.Instance.m_Driver.EndSend(writer2);
+                        }
+
+                        break;
+                    case Message.MessageType.AttackRequest:
+                        break;
+                    case Message.MessageType.DefendRequest:
+                        break;
+                    case Message.MessageType.ClaimTreasureRequest:
+                        break;
+                    case Message.MessageType.LeaveDungeonRequest:
+                        break;
+                }
             }
         }
     }

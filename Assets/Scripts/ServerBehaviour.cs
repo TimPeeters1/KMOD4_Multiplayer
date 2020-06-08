@@ -10,7 +10,6 @@ using System.Linq;
 
 namespace MutiplayerSystem
 {
-
     public enum GameState
     {
         Lobby,
@@ -63,7 +62,7 @@ namespace MutiplayerSystem
         public NativeList<NetworkConnection> m_Connections;
 
         public GameState CurrentGameState;
-        public ushort PlayerStartHealth = 10;
+
         Message Message = new Message();
 
         public List<ServerClient> Clients = new List<ServerClient>();
@@ -108,7 +107,6 @@ namespace MutiplayerSystem
 
         void Update()
         {
-
             m_Driver.ScheduleUpdate().Complete();
 
             // Clean up connections
@@ -134,7 +132,7 @@ namespace MutiplayerSystem
                 //uint colourInt = ((uint)colour.r << 24 | (uint)colour.g << 16 | (uint)colour.b << 8 | (uint)colour.a);
 
                 ServerClient newClient = new ServerClient(c.InternalId, "", color);
-                newClient.HealthPoints = PlayerStartHealth;
+                newClient.HealthPoints = Lobby.PlayerStartHealth;
 
                 Clients.Add(newClient);
 
@@ -206,11 +204,14 @@ namespace MutiplayerSystem
 
             for (int i = 0; i < m_Connections.Length; i++)
             {
-                var startGame = new StartGame();
+                var startGame = new StartGame()
+                {
+                    StartHP = Lobby.PlayerStartHealth
+                };
+
                 var writer = m_Driver.BeginSend(m_Connections[i]);
                 startGame.SerializeObject(ref writer);
                 m_Driver.EndSend(writer);
-
             }
         }
 
