@@ -10,6 +10,10 @@ namespace MutiplayerSystem
         public ClientBehaviour Client;
         public string PlayerName;
 
+        public string IP;
+        public ushort Port;
+        public bool IsLocal;
+
         public GameObject LobbyUI;
         Text CommandLine;
 
@@ -18,6 +22,9 @@ namespace MutiplayerSystem
             Client = this.gameObject.AddComponent<ClientBehaviour>();
             Client.PlayerName = PlayerName;
             Client.Lobby = this;
+            Client.IP = IP;
+            Client.Port = Port;
+            Client.IsLocal = IsLocal;
 
             LobbyUI = Instantiate(Resources.Load("ClientLobby") as GameObject);
             Button b = LobbyUI.transform.Find("Disconnect").GetComponent<Button>();

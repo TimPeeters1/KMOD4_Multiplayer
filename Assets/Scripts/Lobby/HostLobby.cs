@@ -20,7 +20,7 @@ namespace MutiplayerSystem
             _serverObject.name = "Server";
             Server = _serverObject.AddComponent<ServerBehaviour>() as ServerBehaviour;
             Server.Lobby = this;
-
+            
             LobbyUI = Instantiate(Resources.Load("HostLobby") as GameObject);
             Button b = LobbyUI.transform.Find("StartGame").GetComponent<Button>();
             b.onClick.AddListener(delegate () { Server.StartGame(); });

@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.UIElements;
@@ -33,6 +34,8 @@ namespace MutiplayerSystem
 
         public Player PlayerCurrentTurn;
         public List<Player> Players = new List<Player>();
+        public List<Player> LeftPlayers = new List<Player>();
+        public List<Player> DeadPlayers = new List<Player>();
 
         [Space]
         public RoomObject RoomGameObject;
@@ -44,7 +47,7 @@ namespace MutiplayerSystem
         [Header("UI")]
         public Text PlayerTurnUI; //UI that tells which players turn it is
 
-        Door HoveredDoor = null;
+        Interactable HoveredObject = null;
 
         private void Start()
         {
@@ -55,6 +58,7 @@ namespace MutiplayerSystem
             {
                 GameObject player = Instantiate(playerPrefab, RoomGameObject.spawnPositions[i].transform.position, RoomGameObject.spawnPositions[i].transform.rotation);
                 player.name = ClientBehaviour.Instance.Clients[i].ClientName;
+                player.GetComponent<Player>().Health = ClientBehaviour.Instance.Clients[i].StartHealth;
                 player.GetComponent<Player>().Client = ClientBehaviour.Instance.Clients[i];
 
                 Players.Add(player.GetComponent<Player>());
@@ -76,13 +80,14 @@ namespace MutiplayerSystem
                 //Set player turn
                 PlayerCurrentTurn = Players[0];
 
+                #region RoomInfoMessage
                 //Send Room Info
                 var roomInfo = new RoomInfo()
                 {
-                    MoveDirections = (byte)GetComponent<GridGeneration>().RoomGrid[0, 0].possibleDirections,
-                    TreasureInRoom = (ushort)0,
-                    ContainsMonster = (byte)0,
-                    ContainsExit = (byte)0,
+                    MoveDirections = (byte)Grid.RoomGrid[0, 0].possibleDirections,
+                    TreasureInRoom = Grid.RoomGrid[0,0].TreasureAmount,
+                    ContainsMonster = Grid.RoomGrid[0, 0].ContainsMonster,
+                    ContainsExit = Grid.RoomGrid[0, 0].ContainsExit,
                     NumberOfOtherPlayers = (byte)ServerBehaviour.Instance.Clients.Count
                 };
 
@@ -92,13 +97,18 @@ namespace MutiplayerSystem
                     playerIDs[f] = ServerBehaviour.Instance.Clients[f].ClientID;
                     //Debug.Log(playerIDs[f]);
                 }
+                #endregion
 
+                #region NextPlayerMessage
                 //Send which player's turn it is.
                 var playerTurn = new PlayerTurn
                 {
                     PlayerID = PlayerCurrentTurn.Client.ClientID
                 };
 
+                #endregion
+
+                #region SendMessages
                 //Send Messages.
                 for (int i = 0; i < ServerBehaviour.Instance.Clients.Count; i++)
                 {
@@ -110,6 +120,8 @@ namespace MutiplayerSystem
                     playerTurn.SerializeObject(ref writer1);
                     ServerBehaviour.Instance.m_Driver.EndSend(writer1);
                 }
+                #endregion
+
             }
         }
 
@@ -124,26 +136,23 @@ namespace MutiplayerSystem
         void DoSelection()
         {
             Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit hit);
-            if (hit.collider != null && hit.collider.gameObject.GetComponent<Door>())
+
+            if (hit.collider != null && hit.collider.gameObject.GetComponent<Interactable>())
             {
-                HoveredDoor = hit.collider.gameObject.GetComponent<Door>();
-                HoveredDoor.IsHovered = true;
+                HoveredObject = hit.collider.gameObject.GetComponent<Interactable>();
+                HoveredObject.IsHovered = true;
 
                 if (Input.GetKeyDown(KeyCode.Mouse0))
                 {
-                    var moveRequest = new MoveRequest()
-                    {
-                        MoveDirection = HoveredDoor.DoorDirection
-                    };
-
-                    var writer = ClientBehaviour.Instance.m_Driver.BeginSend(ClientBehaviour.Instance.m_Connection);
-                    moveRequest.SerializeObject(ref writer);
-                    ClientBehaviour.Instance.m_Driver.EndSend(writer);
+                    HoveredObject.DoInteraction();
                 }
             }
-            else if (HoveredDoor != null && HoveredDoor.IsHovered == true)
+            else if (HoveredObject != null)
             {
-                HoveredDoor.IsHovered = false;
+                if (HoveredObject.GetComponent<Interactable>().IsHovered == true)
+                {
+                    HoveredObject.GetComponent<Interactable>().IsHovered = false;
+                }
             }
         }
 
@@ -161,6 +170,45 @@ namespace MutiplayerSystem
             }
 
             PlayerCurrentTurn = Players[i];
+
+            if (PlayerCurrentTurn.noTurn)
+            {
+                NextTurn();
+                return;
+            }
+
+            var nextTurn = new PlayerTurn
+            {
+                PlayerID = GameManager.Instance.PlayerCurrentTurn.Client.ClientID
+            };
+
+            //Send which player's turn it is.
+            for (int f = 0; f < ServerBehaviour.Instance.Clients.Count; f++)
+            {
+                var writer = ServerBehaviour.Instance.m_Driver.BeginSend(ServerBehaviour.Instance.m_Connections[f]);
+                nextTurn.SerializeObject(ref writer);
+                ServerBehaviour.Instance.m_Driver.EndSend(writer);
+            }
+        }
+
+        public void EndGame()
+        {
+            var endGame = new EndGame()
+            {
+                NumberOfScores = (byte)GameManager.Instance.LeftPlayers.Count
+            };
+
+            for (int i = 0; i < endGame.NumberOfScores; i++)
+            {
+                endGame.PlayerScorePair.Add(GameManager.Instance.LeftPlayers[i].Client.ClientID, GameManager.Instance.LeftPlayers[i].PlayerTreasureAmount);
+            }
+
+            for (int i = 0; i < ServerBehaviour.Instance.Clients.Count; i++)
+            {
+                var writer = ServerBehaviour.Instance.m_Driver.BeginSend(ServerBehaviour.Instance.m_Connections[i]);
+                endGame.SerializeObject(ref writer);
+                ServerBehaviour.Instance.m_Driver.EndSend(writer);
+            }
         }
 
     }

@@ -4,11 +4,9 @@ using UnityEngine;
 
 namespace MutiplayerSystem
 {
-    public class Door : MonoBehaviour
+    public class DungeonExit : Interactable
     {
-        public Room.RoomDirections DoorDirection;
         public GameObject Arrow;
-        public bool IsHovered;
 
         private void Start()
         {
@@ -25,6 +23,15 @@ namespace MutiplayerSystem
             {
                 Arrow.SetActive(false);
             }
+        }
+
+        public override void DoInteraction()
+        {
+            var leaveDungeon = new LeaveDungeonRequest();
+
+            var writer = ClientBehaviour.Instance.m_Driver.BeginSend(ClientBehaviour.Instance.m_Connection);
+            leaveDungeon.SerializeObject(ref writer);
+            ClientBehaviour.Instance.m_Driver.EndSend(writer);
         }
 
     }

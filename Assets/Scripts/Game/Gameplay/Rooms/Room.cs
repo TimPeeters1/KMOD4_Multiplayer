@@ -9,6 +9,9 @@ namespace MutiplayerSystem
     public class Room : MonoBehaviour
     {
         public Vector2 GridPosition;
+        public ushort TreasureAmount;
+        public byte ContainsMonster;
+        public byte ContainsExit;
 
         [Flags]
         public enum RoomDirections
@@ -63,7 +66,6 @@ namespace MutiplayerSystem
             {
                 possibleDirections = RoomDirections.North | RoomDirections.East | RoomDirections.West;
             }
-
             else
             {
                 possibleDirections = (RoomDirections)15;

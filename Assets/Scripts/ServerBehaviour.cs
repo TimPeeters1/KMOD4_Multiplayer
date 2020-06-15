@@ -22,7 +22,7 @@ namespace MutiplayerSystem
         public int ClientID;
         public string ClientName;
         public Color ClientColour;
-        public ushort HealthPoints;
+        public ushort StartHealth;
 
         public ServerClient(int clientID, string clientName, Color clientColour)
         {
@@ -81,6 +81,7 @@ namespace MutiplayerSystem
             m_Driver = NetworkDriver.Create();
             var endpoint = NetworkEndPoint.AnyIpv4;
             endpoint.Port = 9000;
+
             if (m_Driver.Bind(endpoint) != 0)
             {
                 Debug.Log("Failed to bind to port 9000");
@@ -124,7 +125,7 @@ namespace MutiplayerSystem
             while ((c = m_Driver.Accept()) != default(NetworkConnection) && Clients.Count < 4)
             {
                 m_Connections.Add(c);
-                Debug.Log("Accepted a connection");
+                //Debug.Log("Accepted a connection");
 
                 //Send Welcome Message to Client
                 var color = Lobby.ColorList[Clients.Count];
@@ -132,7 +133,7 @@ namespace MutiplayerSystem
                 //uint colourInt = ((uint)colour.r << 24 | (uint)colour.g << 16 | (uint)colour.b << 8 | (uint)colour.a);
 
                 ServerClient newClient = new ServerClient(c.InternalId, "", color);
-                newClient.HealthPoints = Lobby.PlayerStartHealth;
+                newClient.StartHealth = Lobby.PlayerStartHealth;
 
                 Clients.Add(newClient);
 

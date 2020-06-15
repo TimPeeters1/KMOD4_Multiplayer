@@ -46,8 +46,13 @@ namespace MutiplayerSystem
         public GameState CurrentGameState;
 
         public List<ServerClient> Clients = new List<ServerClient>();
+        public ClientUI ClientUI;
 
         public bool IsHost;
+
+        public string IP;
+        public ushort Port;
+        public bool IsLocal;
 
         #region DataHandling
         public LobbyDataHandler LobbyData = new LobbyDataHandler(true);
@@ -62,10 +67,17 @@ namespace MutiplayerSystem
             m_Driver = NetworkDriver.Create();
             m_Connection = default(NetworkConnection);
 
-            //var endpoint = NetworkEndPoint.Parse("77.167.147.11", 9000);
-            var endpoint = NetworkEndPoint.LoopbackIpv4;
-            endpoint.Port = 9000;
-            m_Connection = m_Driver.Connect(endpoint);
+            if (!IsLocal)
+            {
+                var endpoint = NetworkEndPoint.Parse(IP, Port);
+                m_Connection = m_Driver.Connect(endpoint);
+            }
+            else
+            {
+                var endpoint = NetworkEndPoint.LoopbackIpv4;
+                endpoint.Port = 9000;
+                m_Connection = m_Driver.Connect(endpoint);
+            }
 
             aliveMessage = new GameObject().AddComponent<AliveMessageHandler>();
             aliveMessage.InitializeMessage(3f, true);
