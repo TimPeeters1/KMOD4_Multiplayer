@@ -335,6 +335,8 @@ namespace MutiplayerSystem
 
                         GameManager.Instance.Players[playerLeft.PlayerLeftID].gameObject.SetActive(false);
                         GameManager.Instance.Players[playerLeft.PlayerLeftID].noTurn = true;
+
+                        if(!GameManager.Instance.LeftPlayers.Contains(GameManager.Instance.Players[playerLeft.PlayerLeftID]))
                         GameManager.Instance.LeftPlayers.Add(GameManager.Instance.Players[playerLeft.PlayerLeftID]);
 
                         break;
@@ -352,6 +354,7 @@ namespace MutiplayerSystem
 
                         GameManager.Instance.Players[playerDies.PlayerDeathID].gameObject.SetActive(false);
                         GameManager.Instance.Players[playerDies.PlayerDeathID].noTurn = true;
+                      
                         GameManager.Instance.DeadPlayers.Add(GameManager.Instance.Players[playerDies.PlayerDeathID]);
                         break;
                     case Message.MessageType.EndGame:
@@ -521,11 +524,6 @@ namespace MutiplayerSystem
                             }
                             else
                             {
-                                if (GameManager.Instance.Players.Count == (GameManager.Instance.DeadPlayers.Count + 1))
-                                {
-                                    GameManager.Instance.EndGame();
-                                }
-
                                 var playerDeath = new PlayerDies()
                                 {
                                     PlayerDeathID = ConnectionID
@@ -534,6 +532,11 @@ namespace MutiplayerSystem
                                 var writer2 = ServerBehaviour.Instance.m_Driver.BeginSend(ServerBehaviour.Instance.m_Connections[player.Client.ClientID]);
                                 playerDeath.SerializeObject(ref writer2);
                                 ServerBehaviour.Instance.m_Driver.EndSend(writer2);
+
+                                if (GameManager.Instance.Players.Count == (GameManager.Instance.DeadPlayers.Count + 1))
+                                {
+                                    GameManager.Instance.EndGame();
+                                }
                             }
                         }
 
@@ -606,6 +609,7 @@ namespace MutiplayerSystem
 
                         if (GameManager.Instance.Players.Count == (GameManager.Instance.LeftPlayers.Count + 1))
                         {
+                            GameManager.Instance.LeftPlayers.Add(GameManager.Instance.Players[ConnectionID]);
                             GameManager.Instance.EndGame();
                         }
                         else

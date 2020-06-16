@@ -85,7 +85,7 @@ namespace MutiplayerSystem
                 var roomInfo = new RoomInfo()
                 {
                     MoveDirections = (byte)Grid.RoomGrid[0, 0].possibleDirections,
-                    TreasureInRoom = Grid.RoomGrid[0,0].TreasureAmount,
+                    TreasureInRoom = Grid.RoomGrid[0, 0].TreasureAmount,
                     ContainsMonster = Grid.RoomGrid[0, 0].ContainsMonster,
                     ContainsExit = Grid.RoomGrid[0, 0].ContainsExit,
                     NumberOfOtherPlayers = (byte)ServerBehaviour.Instance.Clients.Count
@@ -159,8 +159,8 @@ namespace MutiplayerSystem
         public void NextTurn()
         {
             int i = Players.IndexOf(PlayerCurrentTurn);
-            
-            if(i != (Players.Count - 1))
+
+            if (i != (Players.Count - 1))
             {
                 i++;
             }
@@ -193,6 +193,7 @@ namespace MutiplayerSystem
 
         public void EndGame()
         {
+
             var endGame = new EndGame()
             {
                 NumberOfScores = (byte)GameManager.Instance.LeftPlayers.Count
@@ -201,6 +202,7 @@ namespace MutiplayerSystem
             for (int i = 0; i < endGame.NumberOfScores; i++)
             {
                 endGame.PlayerScorePair.Add(GameManager.Instance.LeftPlayers[i].Client.ClientID, GameManager.Instance.LeftPlayers[i].PlayerTreasureAmount);
+                DatabaseManager.Instance.ServerSubmitScore(GameManager.Instance.LeftPlayers[i].PlayerTreasureAmount, GameManager.Instance.LeftPlayers[i].Client.ClientID);
             }
 
             for (int i = 0; i < ServerBehaviour.Instance.Clients.Count; i++)
