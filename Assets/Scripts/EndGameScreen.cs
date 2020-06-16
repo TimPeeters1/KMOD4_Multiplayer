@@ -4,7 +4,10 @@ using UnityEngine;
 
 public class EndGameScreen : MonoBehaviour
 {
-
+    public void OpenStatistics()
+    {
+        Application.OpenURL("https://studenthome.hku.nl/~tim.peeters/Database/Statistics.php");
+    }
 
 
     public void QuitGame()

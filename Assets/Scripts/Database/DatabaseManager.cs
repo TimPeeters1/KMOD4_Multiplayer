@@ -30,16 +30,26 @@ public class DatabaseManager : MonoBehaviour
     }
     #endregion
 
+
     private void Start()
     {
-        StartCoroutine(Database.GetHttp("ServerLogin.php?ID="+ Database.ServerID + "&Password=" + Database.ServerPassword));
+        string url = "ServerLogin.php?ID=" + Database.ServerID.ToString() + "&Password=" + Database.ServerPassword.ToString();
+        StartCoroutine(ServerLoginRoutine(url));
+
+    }
+
+    private IEnumerator ServerLoginRoutine(string _url)
+    {
+        yield return StartCoroutine(Database.GetHttp(_url));
+
+        Database.SessionID = Database.ServerResponse;
     }
 
 
     public void ClientLogin(string _username, string _password)
     {
-        string url = "UserLogin.php?Session_ID ="+ Database.SessionID + "&Username=" + _username + "&Password=" + _password;
-
+        string url = "UserLogin.php?Session_ID=" + Database.SessionID + "&Username=" + _username + "&Password=" + _password;
+        Debug.Log("UserLogin.php?Session_ID=" + Database.SessionID + "&Username=" + _username + "&Password=" + _password);
         StartCoroutine(LoginRoutine(url));
 
     }
@@ -60,10 +70,10 @@ public class DatabaseManager : MonoBehaviour
 
     public void ServerSubmitScore(int _score, int _user_id)
     {
-        string url = "InsertQuery.php?Score=" + _score.ToString() + "&UserID=" + _user_id.ToString();
+        string url = "ScoreInsert.php?Session_ID=" + Database.SessionID + "&Score=" + _score.ToString() + "&UserID=" + _user_id.ToString();
 
         StartCoroutine(SubmitRoutine(url));
-        
+
 
     }
 
